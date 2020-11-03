@@ -1,0 +1,113 @@
+---
+title: "Title of Your Report"
+author: "Names of your Group Members"
+date: "Due Date"
+output:
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+
+# Data
+
+```{r}
+# import the pre-processed survey Data
+survey_data <- read_csv("survey_data.csv")
+# import the pre-processed census Data
+census_data <- read_csv("census_data.csv")
+
+# more data pre-processing
+survey_data <- survey_data %>% mutate(race = case_when(
+  race_ethnicity == "White" ~ "white",
+  race_ethnicity == "Black, or African American" ~ "black",
+  race_ethnicity == "Asian (Asian Indian)" ~ "Asian",
+  race_ethnicity == "Asian (Vietnamese)" ~ "Asian",
+  race_ethnicity == "Asian (Chinese)" ~ "Asian", 
+  race_ethnicity == "Asian (Korean)" ~ "Asian", 
+  race_ethnicity == "Asian (Japanese)" ~ "Asian", 
+  race_ethnicity == "Some other race" ~ "other", 
+  race_ethnicity == "Asian (Filipino)" ~ "Asian",
+  race_ethnicity == "Asian (Other)" ~ "Asian", 
+  race_ethnicity == "Pacific Islander (Native Hawaiian)" ~ "Pacific", 
+  race_ethnicity == "Pacific Islander (Samoan)" ~ "Pacific", 
+  race_ethnicity == "Pacific Islander (Other)" ~ "Pacific", 
+  race_ethnicity == "Pacific Islander (Guamanian)" ~ "Pacific", 
+  race_ethnicity == "American Indian or Alaska Native" ~ "native"),
+  education = case_when(education=="Associate Degree" ~ "college",
+                        education=="College Degree (such as B.A., B.S.)" ~ "college",
+                        education=="High school graduate" ~ "high school",
+                        education=="Other post high school vocational training" ~ "vocational",
+                        education=="Completed some college, but no degree" ~ "high school",
+                        education=="Masters degree" ~ "college",
+                        education=="Middle School - Grades 4 - 8" ~ "less than high school",
+                        education=="Completed some high school" ~ "less than high school",
+                        education=="Doctorate degree" ~ "college",
+                        education=="3rd Grade or less" ~ "less than high school"))
+
+```
+
+\newpage
+
+# Model
+
+we want to predict the popular vote outcome of the 2020 American federal election. We will use a multivariable logistic (logit) regression model to model this outcome since it is a binary outcome. The variables used in the model to predict the outcome are age, sex, state, race, education level.To do this, we use post-stratification technique to analyze and calculate the data.
+
+
+$$ \log{\frac{p}{1-p}} = \beta_0+\beta_1  x_{age} +\beta_2 x_{sex} +\beta_3 x_{state}+\beta_4 x_{race}+\beta_5 x_{education}$$
+
+
+
+\newpage
+
+# Results
+
+
+
+```{r fig1, fig.cap="ROC curve of the fitted logistic regression model"}
+library(pROC)
+model <- glm(vote_trump ~ age + gender + state + race + education, 
+            data=survey_data, family="binomial")
+prob=predict(model,type=c("response"))
+```
+
+
+```{r}
+# post-stratification calculation
+census_data$estimate <-
+  model %>%
+  predict(newdata = census_data, type="response")
+
+store <- census_data %>%
+  mutate(alp_predict_prop = estimate*n) %>%
+  summarise(alp_predict = sum(alp_predict_prop)/sum(n))
+```
+
+```{r tab1}
+library(knitr)
+results <- data.frame(`Point estimate` = store$alp_predict,
+                      `Margin of error` = qnorm(.975) * sd(census_data$estimate))
+kable(results, caption="Point estimate and margin of error of probabiliy of Donald Trump winning",
+      digits=3)
+```
+
+\newpage
+
+# Discussion
+
+
+\newpage
+
+# References
+
+
+
+
+
+
+
+
+
